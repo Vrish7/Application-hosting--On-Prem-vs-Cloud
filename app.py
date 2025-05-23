@@ -1,15 +1,13 @@
 import streamlit as st
 import pandas as pd
-import openai
+from openai import OpenAI
 
-openai.api_key = st.secrets["openai_api_key"]  # store this in .streamlit/secrets.toml
+client = OpenAI(api_key=st.secrets["openai_api_key"])
 
-# Load CSV
 uploaded_file = st.file_uploader("Upload Application Classification CSV", type="csv")
 if uploaded_file:
     classification_df = pd.read_csv(uploaded_file)
 
-    # Define weights dictionary
     category_weights = {
         "transactional app":           [0.25, 0.2, 0.15, 0.1, 0.1, 0.1, 0.1],
         "analytics app":               [0.1, 0.1, 0.2, 0.2, 0.1, 0.2, 0.1],
@@ -42,14 +40,14 @@ if uploaded_file:
             st.warning("App not found. Asking GPT for a suggested classification.")
             if app_desc:
                 with st.spinner("Asking AI to classify the app..."):
-                    response = openai.ChatCompletion.create(
+                    response = client.chat.completions.create(
                         model="gpt-3.5-turbo",
                         messages=[
                             {"role": "system", "content": "You're an expert in classifying enterprise IT applications."},
                             {"role": "user", "content": f"Classify this app into one of the following: Transactional App, Analytics App, Compliance-Centric App, Scalable Web App, ERP App, Compliance Sensitive App.\n\nApp name: {app_name}\nDescription: {app_desc}"}
                         ]
                     )
-                    classification = response["choices"][0]["message"]["content"].strip().lower()
+                    classification = response.choices[0].message.content.strip().lower()
                     st.info(f"AI Suggested Classification: {classification.title()}")
 
                     weights = category_weights.get(classification)
