@@ -91,7 +91,7 @@ if uploaded_file:
                         st.info(f"AI Suggested Classification: {classification.title()}")
 
                         if matched_cat:
-                        weights = category_weights[matched_cat]
+    weights = category_weights[matched_cat]
                             result = calculate_scores(weights)
                             st.success(f"Scores calculated using AI-suggested classification: {matched_cat.title()}!")
                             st.json(result)
