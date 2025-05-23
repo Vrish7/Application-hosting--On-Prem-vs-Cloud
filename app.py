@@ -1,8 +1,14 @@
+
 import streamlit as st
 import pandas as pd
-from openai import OpenAI
- 
-client = OpenAI(api_key=st.secrets["openai_api_key"])
+
+try:
+    from openai import OpenAI
+    client = OpenAI(api_key=st.secrets["openai_api_key"])
+    gpt_enabled = True
+except Exception as e:
+    st.warning("OpenAI API key not found or incorrect. AI classification disabled.")
+    gpt_enabled = False
 
 uploaded_file = st.file_uploader("Upload Application Classification CSV", type="csv")
 if uploaded_file:
@@ -36,58 +42,42 @@ if uploaded_file:
     if app_name:
         row = classification_df[classification_df["Application Name"].str.lower().str.strip() == app_name.lower().strip()]
 
-        if row.empty:
-            st.warning("App not found. Asking GPT for a suggested classification.")
-            if app_desc:
-                with st.spinner("Asking AI to classify the app..."):
-                    response = client.chat.completions.create(
-                        model="gpt-3.5-turbo",
-                        messages=[
-                            {"role": "system", "content": "You're an expert in classifying enterprise IT applications."},
-                            {"role": "user", "content": f"Classify this app into one of the following: Transactional App, Analytics App, Compliance-Centric App, Scalable Web App, ERP App, Compliance Sensitive App.\n\nApp name: {app_name}\nDescription: {app_desc}"}
-                        ]
-                    )
-                    classification = response.choices[0].message.content.strip().lower()
-                    known_categories = category_weights.keys()
-                    for cat in known_categories:
-                        if cat in classification:
-                            classification = cat
-                            break
+        if row.empty and gpt_enabled and app_desc:
+            st.warning("App not found. Asking GPT for a suggested classification...")
+            with st.spinner("Classifying via AI..."):
+                response = client.chat.completions.create(
+                    model="gpt-3.5-turbo",
+                    messages=[
+                        {"role": "system", "content": "You're an expert in classifying enterprise IT applications."},
+                        {"role": "user", "content": f"Classify this app into one of the following: Transactional App, Analytics App, Compliance-Centric App, Scalable Web App, ERP App, Compliance Sensitive App.\n\nApp name: {app_name}\nDescription: {app_desc}"}
+                    ]
+                )
+                classification = response.choices[0].message.content.strip().lower()
+                st.info(f"AI Suggested Classification: {classification}")
 
-                    if classification in category_weights:
-                        weights = category_weights[classification]
+                for cat in category_weights:
+                    if cat in classification:
+                        weights = category_weights[cat]
                         result = calculate_scores(weights)
-                        st.success(f"Scores calculated using AI-suggested classification: {classification.title()}!")
+                        st.success(f"Scores calculated using AI-suggested classification: {cat.title()}")
                         st.json(result)
-                    else:
-                        st.warning("AI suggestion not in known categories. Please enter weights manually.")
-                        weights_input = st.text_input("Enter 7 weights separated by space (order: Business Criticality, Performance & Latency, Compliance & Security, Integration Needs, Cost Consideration, Scalability & Elasticity, Team Capability & Readiness)")
-                        if weights_input:
-                            try:
-                                weights = list(map(float, weights_input.split()))
-                                if len(weights) != 7:
-                                    raise ValueError
-                                result = calculate_scores(weights)
-                                st.success("Scores calculated successfully!")
-                                st.json(result)
-                            except:
-                                st.error("Invalid input. Enter exactly 7 numeric weights.")
-        else:
+                        break
+                else:
+                    st.warning("AI suggestion not recognized. Please enter weights manually.")
+                    weights_input = st.text_input("Enter 7 weights separated by space:")
+                    if weights_input:
+                        try:
+                            weights = list(map(float, weights_input.split()))
+                            if len(weights) != 7:
+                                raise ValueError
+                            result = calculate_scores(weights)
+                            st.success("Scores calculated.")
+                            st.json(result)
+                        except:
+                            st.error("Enter exactly 7 numeric values.")
+        elif not row.empty:
             classification = row.iloc[0]["App Classification"].strip().lower()
-            if classification == "unclassified":
-                st.warning("App is unclassified. Please enter custom weights.")
-                weights_input = st.text_input("Enter 7 weights separated by space (order: Business Criticality, Performance & Latency, Compliance & Security, Integration Needs, Cost Consideration, Scalability & Elasticity, Team Capability & Readiness)")
-                if weights_input:
-                    try:
-                        weights = list(map(float, weights_input.split()))
-                        if len(weights) != 7:
-                            raise ValueError
-                        result = calculate_scores(weights)
-                        st.success("Scores calculated successfully!")
-                        st.json(result)
-                    except:
-                        st.error("Invalid input. Enter exactly 7 numeric weights.")
-            elif "+" in classification or "," in classification:
+            if "+" in classification or "," in classification:
                 delimit = "+" if "+" in classification else ","
                 cat1, cat2 = map(str.strip, classification.split(delimit))
                 st.info(f"Multi-category: {cat1.title()} + {cat2.title()}")
@@ -99,17 +89,27 @@ if uploaded_file:
                             raise ValueError
                         w1 = category_weights[cat1]
                         w2 = category_weights[cat2]
-                        weights = [(r1/100)*w1[i] + (r2/100)*w2[i] for i in range(len(w1))]
+                        weights = [(r1/100)*w1[i] + (r2/100)*w2[i] for i in range(7)]
                         result = calculate_scores(weights)
-                        st.success("Scores calculated successfully!")
+                        st.success("Scores calculated.")
                         st.json(result)
                     except:
-                        st.error("Invalid input or category not found.")
+                        st.error("Invalid input or ratio.")
+            elif classification in category_weights:
+                weights = category_weights[classification]
+                result = calculate_scores(weights)
+                st.success(f"Scores calculated for {classification.title()}.")
+                st.json(result)
             else:
-                st.success(f"Single-category app: {classification.title()}")
-                weights = category_weights.get(classification)
-                if not weights:
-                    st.error("Category not found in dictionary.")
-                else:
-                    result = calculate_scores(weights)
-                    st.json(result)
+                st.warning("Unclassified app. Please enter 7 weights manually.")
+                weights_input = st.text_input("Enter 7 weights separated by space:")
+                if weights_input:
+                    try:
+                        weights = list(map(float, weights_input.split()))
+                        if len(weights) != 7:
+                            raise ValueError
+                        result = calculate_scores(weights)
+                        st.success("Scores calculated.")
+                        st.json(result)
+                    except:
+                        st.error("Enter exactly 7 numeric values.")
