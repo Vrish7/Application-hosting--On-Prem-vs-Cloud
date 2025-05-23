@@ -56,10 +56,11 @@ if uploaded_file:
                             break
                     st.info(f"AI Suggested Classification: {classification.title()}")
 
-                    if classification in category_weights:
-                        weights = category_weights[classification]
+                    if any(cat in classification for cat in category_weights):
+                        matched_cat = next(cat for cat in category_weights if cat in classification)
+                        weights = category_weights[matched_cat]
                         result = calculate_scores(weights)
-                        st.success("Scores calculated using AI-suggested classification!")
+                        st.success(f"Scores calculated using AI-suggested classification: {matched_cat.title()}!")
                         st.json(result)
                     else:
                         st.warning("AI suggestion not in known categories. Please enter weights manually.")
