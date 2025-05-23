@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from openai import OpenAI
-
+ 
 client = OpenAI(api_key=st.secrets["openai_api_key"])
 
 uploaded_file = st.file_uploader("Upload Application Classification CSV", type="csv")
