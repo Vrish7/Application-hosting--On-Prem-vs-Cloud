@@ -47,19 +47,17 @@ if uploaded_file:
                             {"role": "user", "content": f"Classify this app into one of the following: Transactional App, Analytics App, Compliance-Centric App, Scalable Web App, ERP App, Compliance Sensitive App.\n\nApp name: {app_name}\nDescription: {app_desc}"}
                         ]
                     )
-                    classification_raw = response.choices[0].message.content.strip().lower()
-                    matched_cat = None
-                    for cat in category_weights:
-                        if cat in classification_raw:
-                            matched_cat = cat
+                    classification = response.choices[0].message.content.strip().lower()
+                    known_categories = category_weights.keys()
+                    for cat in known_categories:
+                        if cat in classification:
+                            classification = cat
                             break
-                    st.info(f"AI Suggested Classification: {classification.title()}")
 
-                    if any(cat in classification for cat in category_weights):
-                        matched_cat = next(cat for cat in category_weights if cat in classification)
-                        weights = category_weights[matched_cat]
+                    if classification in category_weights:
+                        weights = category_weights[classification]
                         result = calculate_scores(weights)
-                        st.success(f"Scores calculated using AI-suggested classification: {matched_cat.title()}!")
+                        st.success(f"Scores calculated using AI-suggested classification: {classification.title()}!")
                         st.json(result)
                     else:
                         st.warning("AI suggestion not in known categories. Please enter weights manually.")
@@ -77,37 +75,18 @@ if uploaded_file:
         else:
             classification = row.iloc[0]["App Classification"].strip().lower()
             if classification == "unclassified":
-                st.warning("App is unclassified. Asking GPT for classification.")
-                if app_desc:
-                    with st.spinner("Asking AI to classify the app..."):
-                        response = client.chat.completions.create(
-                            model="gpt-3.5-turbo",
-                            messages=[
-                                {"role": "system", "content": "You're an expert in classifying enterprise IT applications."},
-                                {"role": "user", "content": f"Classify this app into one of the following: Transactional App, Analytics App, Compliance-Centric App, Scalable Web App, ERP App, Compliance Sensitive App.\n\nApp name: {app_name}\nDescription: {app_desc}"}
-                            ]
-                        )
-                        classification = response.choices[0].message.content.strip().lower()
-                        st.info(f"AI Suggested Classification: {classification.title()}")
-
-                        if matched_cat:
-    weights = category_weights[matched_cat]
-                            result = calculate_scores(weights)
-                            st.success(f"Scores calculated using AI-suggested classification: {matched_cat.title()}!")
-                            st.json(result)
-                        else:
-                            st.warning("AI suggestion not in known categories. Please enter weights manually.")
-                            weights_input = st.text_input("Enter 7 weights separated by space (order: Business Criticality, Performance & Latency, Compliance & Security, Integration Needs, Cost Consideration, Scalability & Elasticity, Team Capability & Readiness)")
-                            if weights_input:
-                                try:
-                                    weights = list(map(float, weights_input.split()))
-                                    if len(weights) != 7:
-                                        raise ValueError
-                                    result = calculate_scores(weights)
-                                    st.success("Scores calculated successfully!")
-                                    st.json(result)
-                                except:
-                                    st.error("Invalid input. Enter exactly 7 numeric weights.")
+                st.warning("App is unclassified. Please enter custom weights.")
+                weights_input = st.text_input("Enter 7 weights separated by space (order: Business Criticality, Performance & Latency, Compliance & Security, Integration Needs, Cost Consideration, Scalability & Elasticity, Team Capability & Readiness)")
+                if weights_input:
+                    try:
+                        weights = list(map(float, weights_input.split()))
+                        if len(weights) != 7:
+                            raise ValueError
+                        result = calculate_scores(weights)
+                        st.success("Scores calculated successfully!")
+                        st.json(result)
+                    except:
+                        st.error("Invalid input. Enter exactly 7 numeric weights.")
             elif "+" in classification or "," in classification:
                 delimit = "+" if "+" in classification else ","
                 cat1, cat2 = map(str.strip, classification.split(delimit))
