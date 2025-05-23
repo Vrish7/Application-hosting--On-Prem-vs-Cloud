@@ -58,7 +58,7 @@ if uploaded_file:
 
                 if classification_mode == "Single Category":
                     category = st.selectbox("Select category", list(category_weights.keys()))
-                    if category:
+                    if category and st.button("Calculate Scores"):
                         weights = category_weights[category]
                         result = calculate_scores(weights)
                         st.success(f"Scores for {category.title()} app:")
@@ -68,7 +68,7 @@ if uploaded_file:
                     cat1 = st.selectbox("Select first category", list(category_weights.keys()), key="multi1")
                     cat2 = st.selectbox("Select second category", list(category_weights.keys()), key="multi2")
                     split = st.text_input("Enter split ratio (e.g., 60 40)")
-                    if split:
+                    if split and st.button("Calculate Scores for Multi Category"):
                         try:
                             r1, r2 = map(int, split.split())
                             if r1 + r2 != 100:
