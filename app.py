@@ -48,6 +48,12 @@ if uploaded_file:
                         ]
                     )
                     classification = response.choices[0].message.content.strip().lower()
+                    # Normalize classification by extracting matching keyword
+                    known_categories = category_weights.keys()
+                    for cat in known_categories:
+                        if cat in classification:
+                            classification = cat
+                            break
                     st.info(f"AI Suggested Classification: {classification.title()}")
 
                     if classification in category_weights:
