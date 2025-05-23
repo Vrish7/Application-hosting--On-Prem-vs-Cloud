@@ -47,12 +47,11 @@ if uploaded_file:
                             {"role": "user", "content": f"Classify this app into one of the following: Transactional App, Analytics App, Compliance-Centric App, Scalable Web App, ERP App, Compliance Sensitive App.\n\nApp name: {app_name}\nDescription: {app_desc}"}
                         ]
                     )
-                    classification = response.choices[0].message.content.strip().lower()
-                    # Normalize classification by extracting matching keyword
-                    known_categories = category_weights.keys()
-                    for cat in known_categories:
-                        if cat in classification:
-                            classification = cat
+                    classification_raw = response.choices[0].message.content.strip().lower()
+                    matched_cat = None
+                    for cat in category_weights:
+                        if cat in classification_raw:
+                            matched_cat = cat
                             break
                     st.info(f"AI Suggested Classification: {classification.title()}")
 
@@ -91,10 +90,10 @@ if uploaded_file:
                         classification = response.choices[0].message.content.strip().lower()
                         st.info(f"AI Suggested Classification: {classification.title()}")
 
-                        if classification in category_weights:
-                            weights = category_weights[classification]
+                        if matched_cat:
+                        weights = category_weights[matched_cat]
                             result = calculate_scores(weights)
-                            st.success("Scores calculated using AI-suggested classification!")
+                            st.success(f"Scores calculated using AI-suggested classification: {matched_cat.title()}!")
                             st.json(result)
                         else:
                             st.warning("AI suggestion not in known categories. Please enter weights manually.")
