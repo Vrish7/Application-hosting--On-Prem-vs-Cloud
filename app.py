@@ -1,5 +1,8 @@
 import streamlit as st
 import pandas as pd
+import openai
+
+openai.api_key = st.secrets["openai_api_key"]  # store this in .streamlit/secrets.toml
 
 # Load CSV
 uploaded_file = st.file_uploader("Upload Application Classification CSV", type="csv")
@@ -30,28 +33,48 @@ if uploaded_file:
         }
 
     app_name = st.text_input("Enter Application Name")
+    app_desc = st.text_area("Enter a short description of the app (for AI classification if unrecognized)")
 
     if app_name:
         row = classification_df[classification_df["Application Name"].str.lower().str.strip() == app_name.lower().strip()]
 
         if row.empty:
-            st.warning("App not found. Please enter custom weights.")
-            weights_input = st.text_input("Enter 7 weights separated by space (order: Business Criticality, Performance & Latency, Compliance & Security, Integration Needs, Cost Consideration, Scalability & Elasticity, Team Capability & Readiness)")
-            if weights_input:
-                try:
-                    weights = list(map(float, weights_input.split()))
-                    if len(weights) != 7:
-                        raise ValueError
-                    result = calculate_scores(weights)
-                    st.success("Scores calculated successfully!")
-                    st.json(result)
-                except:
-                    st.error("Invalid input. Enter exactly 7 numeric weights.")
+            st.warning("App not found. Asking GPT for a suggested classification.")
+            if app_desc:
+                with st.spinner("Asking AI to classify the app..."):
+                    response = openai.ChatCompletion.create(
+                        model="gpt-3.5-turbo",
+                        messages=[
+                            {"role": "system", "content": "You're an expert in classifying enterprise IT applications."},
+                            {"role": "user", "content": f"Classify this app into one of the following: Transactional App, Analytics App, Compliance-Centric App, Scalable Web App, ERP App, Compliance Sensitive App.\n\nApp name: {app_name}\nDescription: {app_desc}"}
+                        ]
+                    )
+                    classification = response["choices"][0]["message"]["content"].strip().lower()
+                    st.info(f"AI Suggested Classification: {classification.title()}")
+
+                    weights = category_weights.get(classification)
+                    if weights:
+                        result = calculate_scores(weights)
+                        st.success("Scores calculated using AI suggestion!")
+                        st.json(result)
+                    else:
+                        st.warning("AI suggestion not in known categories. Please enter weights manually.")
+                        weights_input = st.text_input("Enter 7 weights separated by space (order: Business Criticality, Performance & Latency, Compliance & Security, Integration Needs, Cost Consideration, Scalability & Elasticity, Team Capability & Readiness)")
+                        if weights_input:
+                            try:
+                                weights = list(map(float, weights_input.split()))
+                                if len(weights) != 7:
+                                    raise ValueError
+                                result = calculate_scores(weights)
+                                st.success("Scores calculated successfully!")
+                                st.json(result)
+                            except:
+                                st.error("Invalid input. Enter exactly 7 numeric weights.")
         else:
             classification = row.iloc[0]["App Classification"].strip().lower()
             if classification == "unclassified":
                 st.warning("App is unclassified. Please enter custom weights.")
-                weights_input = st.text_input("Enter 7 weights separated by space")
+                weights_input = st.text_input("Enter 7 weights separated by space (order: Business Criticality, Performance & Latency, Compliance & Security, Integration Needs, Cost Consideration, Scalability & Elasticity, Team Capability & Readiness)")
                 if weights_input:
                     try:
                         weights = list(map(float, weights_input.split()))
