@@ -36,7 +36,7 @@ if uploaded_file:
 
         if row.empty:
             st.warning("App not found. Please enter custom weights.")
-            weights_input = st.text_input("Enter 7 weights separated by space")
+            weights_input = st.text_input("Enter 7 weights separated by space (order: Business Criticality, Performance & Latency, Compliance & Security, Integration Needs, Cost Consideration, Scalability & Elasticity, Team Capability & Readiness)")
             if weights_input:
                 try:
                     weights = list(map(float, weights_input.split()))
