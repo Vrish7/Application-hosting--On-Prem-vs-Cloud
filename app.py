@@ -80,10 +80,7 @@ if uploaded_file:
                     except:
                         st.error("Enter exactly 7 numeric values.")
 
-        else:
-            if gpt_enabled and app_desc:
-
-        if row.empty and gpt_enabled and app_desc:
+        elif gpt_enabled and app_desc:
             st.warning("App not found. Asking GPT for a suggested classification...")
             with st.spinner("Classifying via AI..."):
                 response = client.chat.completions.create(
