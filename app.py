@@ -41,6 +41,47 @@ if uploaded_file:
     if app_name:
         row = classification_df[classification_df["Application Name"].str.lower().str.strip() == app_name.lower().strip()]
 
+        if not row.empty:
+            classification = row.iloc[0]["App Classification"].strip().lower()
+            if "+" in classification or "," in classification:
+                delimit = "+" if "+" in classification else ","
+                cat1, cat2 = map(str.strip, classification.split(delimit))
+                st.info(f"Multi-category: {cat1.title()} + {cat2.title()}")
+                split_input = st.text_input("Enter split ratio (e.g. 60 40)")
+                if split_input:
+                    try:
+                        r1, r2 = map(int, split_input.split())
+                        if r1 + r2 != 100:
+                            raise ValueError
+                        w1 = category_weights[cat1]
+                        w2 = category_weights[cat2]
+                        weights = [(r1/100)*w1[i] + (r2/100)*w2[i] for i in range(7)]
+                        result = calculate_scores(weights)
+                        st.success("Scores calculated.")
+                        st.json(result)
+                    except:
+                        st.error("Invalid input or ratio.")
+            elif classification in category_weights:
+                weights = category_weights[classification]
+                result = calculate_scores(weights)
+                st.success(f"Scores calculated for {classification.title()}.")
+                st.json(result)
+            else:
+                st.warning("Unclassified app in Excel. Please enter 7 weights manually.")
+                weights_input = st.text_input("Enter 7 weights separated by space:")
+                if weights_input:
+                    try:
+                        weights = list(map(float, weights_input.split()))
+                        if len(weights) != 7:
+                            raise ValueError
+                        result = calculate_scores(weights)
+                        st.success("Scores calculated.")
+                        st.json(result)
+                    except:
+                        st.error("Enter exactly 7 numeric values.")
+
+        elif row.empty and gpt_enabled and app_desc:
+
         if row.empty and gpt_enabled and app_desc:
             st.warning("App not found. Asking GPT for a suggested classification...")
             with st.spinner("Classifying via AI..."):
