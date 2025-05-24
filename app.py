@@ -80,7 +80,8 @@ if uploaded_file:
                     except:
                         st.error("Enter exactly 7 numeric values.")
 
-        elif row.empty and gpt_enabled and app_desc:
+        else:
+            if gpt_enabled and app_desc:
 
         if row.empty and gpt_enabled and app_desc:
             st.warning("App not found. Asking GPT for a suggested classification...")
